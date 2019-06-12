@@ -1,0 +1,12 @@
+---
+# webserver role main control file
+- hosts: appserver
+  user: centos
+  become: true
+  connection: ssh
+  gather_facts: true
+  vars_files:
+      - vars/vars.yml
+  roles:
+      - commons
+      - appserver

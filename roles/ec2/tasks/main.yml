@@ -1,0 +1,99 @@
+---
+- name: create a new ec2 key pair, returns generated private key
+  ec2_key:
+    name: nicethomas
+    aws_access_key:   "{{ aws_access_key }}"
+    aws_secret_key:   "{{ aws_secret_key }}"
+    region: "{{ aws_region }}"
+  register: ec2_key
+
+- name: Save private key
+  copy: content="{{ ec2_key.key.private_key }}" dest="./id_rsa" mode=0600
+  when: ec2_key.changed
+
+- name: Create Webserver Instance
+  ec2:
+    key_name: nicethomas
+    group_id: "{{ main_sg_id }}"
+    instance_type: t2.micro
+    image: ami-0015b9ef68c77328d
+    region: "{{ aws_region }}"
+    instance_tags: {"Name":"Webserver"}
+    wait: yes
+    wait_timeout: 500
+    volumes:
+      - device_name: /dev/sda1
+        volume_type: gp2
+        volume_size: 10
+    region:           "{{ aws_region }}"
+    aws_access_key:   "{{ aws_access_key }}"
+    aws_secret_key:   "{{ aws_secret_key }}"
+    vpc_subnet_id: "{{ public_subnet_id }}"
+    assign_public_ip: yes
+    exact_count: 1
+    count_tag:
+      Name: webserver
+  register: my_web_ec2
+
+
+- name:  Set EC2 ID in variable
+  set_fact:
+    ec2_id: "{{ my_web_ec2.instance_ids[0] }}"
+
+- debug: var=ec2_id
+
+- name: Assign EIP to EC2
+  ec2_eip:
+    device_id: "{{ ec2_id }}"
+    region: "{{ aws_region }}"
+    aws_access_key:   "{{ aws_access_key }}"
+    aws_secret_key:   "{{ aws_secret_key }}"
+    allow_reassociation: yes
+  register: instance_eip
+- debug: var=instance_eip.public_ip
+
+- name: output the IP
+  local_action: shell grep web-pub-ip inventory -l | xargs sed -i 's/web-pub-ip/{{ instance_eip.public_ip }}/g'
+
+- name: Create Appserver Instance
+  ec2:
+    key_name: nicethomas
+    group_id: "{{ private_sg_id }}"
+    instance_type: t2.micro
+    image: ami-0015b9ef68c77328d
+    region: "{{ aws_region }}"
+    instance_tags: {"Name":"Appserver"}
+    wait: yes
+    wait_timeout: 500
+    volumes:
+      - device_name: /dev/sda1
+        volume_type: gp2
+        volume_size: 10
+        region:       "{{ aws_region }}"
+    aws_access_key:   "{{ aws_access_key }}"
+    aws_secret_key:   "{{ aws_secret_key }}"
+    vpc_subnet_id: "{{ private_subnet_id }}"
+    exact_count: 1
+    count_tag:
+      Name: appserver
+  register: my_app_ec2
+  
+- name:  Set EC2 ID in variable
+  set_fact:
+    ec2app_id: "{{ my_app_ec2.instance_ids[0] }}" 
+        
+        
+- debug: var=ec2app_id
+
+- name: Assign EIP to EC2
+  ec2_eip:
+    device_id: "{{ ec2app_id }}"
+    region: "{{ aws_region }}"
+    aws_access_key:   "{{ aws_access_key }}"
+    aws_secret_key:   "{{ aws_secret_key }}"
+    allow_reassociation: yes
+  register: instance_eip
+- debug: var=instance_eip.private_ip_address
+
+- name: output the IP
+  local_action: shell grep app-pub-ip inventory -l | xargs sed -i 's/app-pub-ip/{{ instance_eip.public_ip }}/g'

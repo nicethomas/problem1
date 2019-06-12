@@ -1,0 +1,24 @@
+---
+# AWS Credentials
+#aws_access_key: "myaccesskey"
+#aws_secret_key: "mysecretkey
+aws_region:     "us-east-1"
+
+# VPC Information
+vpc_name:       "My VPC"
+vpc_cidr_block: "10.1.0.0/16"
+
+# For Security Group Rule
+cidr_ip:  "0.0.0.0/0"
+
+# Subnets
+public_subnet_web_cidr:  "10.1.1.0/24"
+
+# Subnets
+private_subnet_app_cidr: "10.1.2.0/24"
+
+# AppServer Private IP
+app_private_ip: "app-priv-ip"
+
+# Backend Address
+my_backends: "{{ app_private_ip }}"

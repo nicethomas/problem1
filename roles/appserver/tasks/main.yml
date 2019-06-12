@@ -1,0 +1,27 @@
+---
+# appserver role tasks definations
+#
+- name: get public IP
+  connection: local
+  ipify_facts:
+- debug: var=ipify_public_ip
+
+- name: Gather facts from new server
+  setup:
+    filter: ansible_default_ipv4.address
+
+- name: output the IP
+  local_action: shell grep app-priv-ip vars/defaults.yml -l | xargs sed -i 's/app-priv-ip/{{ ansible_default_ipv4.address }}/g'
+
+- name: Install Java
+  yum: name=java state=installed
+
+- name: Install Tomcat
+  yum: name=tomcat state=installed
+  notify: Restart Tomcat
+
+- name: Install WAR
+  get_url:
+      url:  https://nicethomascompanynews.s3.amazonaws.com/companyNews.war
+      dest: "{{ warRemotePath }}/{{ warName }}"
+  notify: Restart Tomcat

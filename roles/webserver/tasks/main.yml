@@ -1,0 +1,57 @@
+---
+# webserver role tasks defination
+
+- name: Install HTTPD
+  yum: name=httpd state=installed
+  notify: Restart HTTPD
+
+- name: Install mod_ssl
+  yum: name=mod_ssl state=installed
+  notify: Restart HTTPD
+
+- name: Create SSL Directory
+  file:
+    path: /etc/httpd/ssl
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Create Document_root directories for vhosts if not exists
+  file: dest={{ item.docroot }} state=directory owner=apache group=apache mode=0755
+  with_items:
+  - "{{ vhosts }}"
+  tags: create_docroots
+
+- name: Copy Static Content
+  unarchive:
+    src: https://nicethomascompanynews.s3.amazonaws.com/static.zip
+    dest: /var/www/companynews/html
+    remote_src: yes
+
+- name: Copy Index File
+  copy:
+      src: index.html
+      dest: /var/www/companynews/html
+
+
+- name: Dynamic configuration  for  vhost domains
+  template: src={{ item.name }}.conf.j2  dest=/etc/httpd/conf.d/{{ item.name }}.conf
+  with_items:
+  - "{{ vhosts }}"
+  tags: dynamic_vhosts
+
+
+- name: Copy SSL KEY Files
+  template: src={{ item.key }}.j2  dest=/etc/httpd/ssl/{{ item.key }}
+  with_items:
+  - "{{ vhosts }}"
+  tags: ssl-file
+
+- name: Copy CERT  Files
+  template: src={{ item.crt }}.j2  dest=/etc/httpd/ssl/{{ item.crt }}
+  with_items:
+  - "{{ vhosts }}"
+  tags: ssl-file
+  notify: Restart HTTPD
+

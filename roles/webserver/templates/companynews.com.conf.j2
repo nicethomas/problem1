@@ -1,0 +1,35 @@
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_balancer_module modules/mod_proxy_balancer.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+
+
+<VirtualHost *:80>
+    ServerName companynews.com
+
+     RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,NC,L]
+
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName companynews.com
+    DocumentRoot /var/www/companynews/html
+    ErrorLog /etc/httpd/logs/error.log
+    CustomLog /etc/httpd/logs/requests.log combined
+    Alias "/companyNews/styles" "/var/www/companynews/html/static/styles"
+    Alias "/companyNews/images" "/var/www/companynews/html/static/images"
+
+    SSLEngine On
+    SSLCertificateFile     /etc/httpd/ssl/companynews.crt
+    SSLCertificateKeyFile   /etc/httpd/ssl/companynews.key
+    
+    ProxyPassMatch ^(/.*\.css)$ !
+    ProxyPassMatch ^(/.*\.jpg)$ !
+    ProxyPassMatch ^(/.*\.png)$ !
+
+    ProxyPass "/companyNews" "http://{{ my_backends }}:8080/companyNews"
+    ProxyPassReverse "/companyNews" "http://{{ my_backends }}:8080/companyNews"
+
+</VirtualHost>
